@@ -1,0 +1,340 @@
+Cython Keywords
+---
+
+* early binding
+* Cython specific cdef statement
+* PEP-484/526
+
+Pure Python
+--
+
+a_global_variable = declare(cython.int)
+
+def func():
+    i: cython.int
+    j: cython.int
+    k: cython.int
+    f: cython.float
+    g: cython.int[42]
+    h: cython.p_float
+
+Cython
+--
+
+cdef int a_global_variable
+
+def func():
+    cdef int i, j, k, g[42]
+    cdef float f, *h
+
+* cpdef
+* ctypedef
+
+Pure Python
+--
+
+ULong = cython.typedef(cython.ulong)
+IntPtr = cython.typedef(cython.p_in)
+
+Cython
+--
+
+ctypedef unsinged long ULong
+ctypedef int* IntPtr
+
+* C function by declaring it with cdef or by decorating a Python function with @cfunc
+
+Pure Python
+--
+
+@cython.cfunc
+def eggs(l: cython.ulong, f: cython.float) -> cython.int:
+
+Cython
+--
+
+cdef int eggs(unsigned long l, float f):
+
+* Class can be declared as Extension Types. Those will have a behavior very close to python classes,
+  but are faster because they use a struct internally to store attributes.
+  they are declared with the cdef keyword or the @cclass class decorator.
+
+Pure Python
+--
+
+from __future__ import print_function
+
+@cython.cclass
+class Shrubbery:
+    width: cython.int
+    height: cython.int
+
+    def __init__(self, w, h):
+        self.width = w
+        self.height = h
+
+    def describe(self):
+        print("This shrubbery is", self.width, "by", self.height, "cubits.")
+
+Cython
+--
+
+from __future__ import print_function
+
+cdef class Shrubbery:
+    cdef int width
+    cdef int height
+
+    def __init__(self,w,h):
+        self.width = w
+        self.height = h
+
+    def describe(self):
+        print("This shrubbery is", self.width, "by", self.height, "cubits.")
+
+* Cython doesn't support variable length arrays from C99
+
+Pure Python
+---
+
+def main():
+    foo: list = []
+
+Cython
+---
+
+cdef list foo = []
+
+* For declared builtin types, Cython uses internally a C variable of type PyObject*.
+
+* If you have a series of declarations that all begin with cdef,
+  you can group them into a cdef block.
+
+
+* There are two kinds of function definition in Cython.
+
+* Python functions are defined using the def statement.
+* C functions are defined using cdef statement in Cython or with the @cfunc decorator.
+  They take either Python objects or C values as parameters, and can return either Python objects or C values.
+
+* within a Cython module, Python functions and C functions can call each other freely,
+  but only Python functions can be called from outside the module by interpreted Python code.
+
+* There is also a hybrid function, declared with cpdef in .pyx files or with the @ccall decorator.
+
+* When a paramter of a Python function is declared to have a C data type,
+  it is passed in as a Python object and automatically converted to a C value, if possible.
+
+* Automatic conversion is currently only possible for numeric types,
+  string types and structs.
+
+* C functions can have paramters of any type, since they're passed in directly using a normal C function call.
+
+* If no type is specified for a parameter or return value, it is assumed to be a Python object.
+
+* The name object can also be used to explicitly declare something as a Python object.
+
+Cython
+--
+
+cdef ftag(object int):
+    ...
+
+* you can also use object as the explicit return type of a function
+
+Cython
+--
+
+cdef object ftag(object int):
+    ...
+
+
+* When in a .pxd file, the signature is different like this
+
+Cython
+--
+
+cdef class A:
+    cdef foo(self)
+
+cdef class B(A):
+    cdef foo(self, x=*)
+
+cdef class C(B):
+    cdef foo(self, x=*, int k=*)
+
+* Functions declared in a struct are automatically converted to function pointers.
+
+* The ? indicates that the value -1 may signal an error.
+
+* cpdef/@ccall methods can override C methods.
+
+Cython
+--
+
+from __future__ import print_function
+
+cdef class A:
+    cdef foo(self):
+        print("A")
+
+cdef class B(A):
+    cdef foo(self, x=None):
+        print("B", x)
+
+cdef class C(B):
+    cdef foo(self, x=True, int k=3):
+        print("C", x, k)
+
+* When subclassing an extension type with a Python class, Python methods can override cpdef/@ccall methods but not plain C method.
+
+C types              From Python types              To Python types
+-------              -------                        -------
+
+char,short,          int, long                      int
+int,long
+
+unsinged int,        int, long                      long
+unsinged long,
+long long
+
+float, double        int,long,float                 float
+long double
+
+char *               str/bytes                      str/bytes
+
+C array              iterable                       list
+
+struct,union                                        dict
+
+-----------------------------------------------------------------------
+
+* Cython language supports type casting in a similar way as C.
+
+* Where C uses "(" and ")", Cython uses "<" and ">". In pure python mode,
+  the cython.cast() function is used.
+
+Pure Python
+--
+
+def main():
+    p: cython.p_char
+    q: cython.p_float
+    p = cython.cast(cython.p_char,q)
+
+Cython
+--
+
+cdef char *p
+cdef float *q
+p = <char*>q
+
+Cython
+---
+
+from cpython.ref cimport PyObject
+
+cdef extern from *:
+    ctypedef Py_ssize_t Py_intptr_t
+
+python_string = "foo"
+
+cdef void *ptr = <void*>python_string
+cdef Py_intptr_t adress_in_c = <Py_intptr_t>ptr
+address_from_void = adress_in_c
+
+cdef PyObject *ptr2 = <PyObject*> python_string
+cdef Py_intptr_t address_in_c2 = <Py_intptr_t>ptr2
+address_from_PyObject = address_in_c2
+
+assert address_from_void == address_from_PyObject == id(python_string)
+
+print(<object> ptr)
+print(<object> ptr2)
+
+* To have a cast checked, use <MyExtensionType?> x in Cython syntax.
+  In this case,Cython will apply a runtime check that raises a TypeError if x is not an instance of MyEXtensionType.
+
+* If Python objects and C values are mixed in an expression, conversions are performed automatically
+  between Python objects and C numeric or string types.
+
+* Threre is no -> operator in Cython.Instead of p->x, use p.x.
+
+* There is no unary * operator in Cython. Insteal of *p, use p[0].
+
+* There is an & operator in Cython, with the same semantics as in C.
+
+* The null C pointer is called NULL, not 0.
+
+* Cython compiles calls to most buil-in functions into direct calles to the corresponding
+  Python/C API routines, making them particularly fast.
+
+* If you are worried that the loop is not being converted correctly, use the annotate feature of the
+  cython commandline (-a) to easily see the  generated C code.
+
+* Cython recongnises the usual Python for-in-range integer loop pattern
+
+Cython
+--
+
+for i in range(n):
+    ...
+
+Cython
+--
+
+for i from 0 <= i < n:
+    ...
+
+for i from 0 <= i < n by s:
+    ...
+
+* There are three file type in Cython.
+    * The implemention files, carrying a .py or .pyx suffix.
+    * The definition files, carring a .pxd suffix.
+    * The include files, carryng a .pxi suffix.
+
+* The implementation file, as the name suggest, contains the implementation of your functions,
+  classes, extension types, etc. Nearly all the python syntax is supported in this file.
+
+* It is possible for Cython to compile both .py and .pyx files.
+
+* Cython won't change the generated code depending on the suffix used.
+
+* If one want to use the Cython syntax, using a .pyx file is necessary.
+
+* In addition to the Python syntax, the user can also leverage Cython syntax(such as cdef) to use
+    C variables, can declare function as cdef or cpdef and can import C definitions with cimport.
+
+* When a .pyx file is compiled, Cython first checks to see if a corresponding .pxd file exists and processes it first. It acts like a header file for a Cython .pyx file.
+
+* A definition file is used to declare various things.
+
+* Any C declaration can be made,and it can be alse a declaration of a C variable or function implemented in a C/C++ file. This can be done with cdef extern from.
+
+* Sometimes,.pxd files are used as a translation of C/C++ header files into a syntax that Cython can understand. This allows then the C/C++ variable and functions to be used directly in implementation files with cimport.
+
+* A definition file can also contain the definition part of an extension type and the declarations of
+    functions for an external library.
+
+* A definition file cannot contain the implementations of any C or Python functions, or
+    any Python class definitions, or any executable statements.
+
+* You only need a public declaration if you want to make something available to externla C code.
+
+* A Cython source file can include material from other files using the include statement
+
+Cython
+--
+
+include "example.pxi"
+
+
+
+
+
+
+References
+---
+
+https://cython.readthedocs.io/en/latest/src/userguide/language_basics.html#language-basics
