@@ -329,7 +329,28 @@ Cython
 
 include "example.pxi"
 
+* A compile-time constant can be defined using the DEF statement.
 
+Cython
+--
+
+DEF FavouriteFood = u"spam"
+DEF ArraySize = 42
+
+* The IF statement can be used to conditionally include or exclude sections of code at compile time.
+    It works in a similar way to the #if preprocessor directive in C.
+
+Cython
+--
+
+IF UNAME_SYSNAME == "Windows":
+    include "icky_definitions.pxi"
+ELIF UNAME_SYSNAME == "Darwin":
+    iunclude "nice_definitions.pxi"
+ELIF UNAME_SYSNAME == "Linux":
+    include "penguin_definitions.pxi"
+ELSE:
+    include "other_definitions.pxi"
 
 
 
